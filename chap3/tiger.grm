@@ -18,13 +18,28 @@ void yyerror(char *s)
 	string sval;
 	}
 
+%nonassoc TYPE FUNCTION
+%nonassoc ID
+%nonassoc LBRACK
+%nonassoc DO OF
+%nonassoc THEN
+%nonassoc ELSE
+%left SEMICOLON
+%nonassoc ASSIGN
+%left OR
+%left AND
+%nonassoc EQ NEQ LT LE GT GE
+%left PLUS MINUS
+%left TIMES DIVIDE
+%left UMINUS
+
 %token <sval> ID STRING
 %token <ival> INT
 
 %token 
   COMMA COLON SEMICOLON LPAREN RPAREN LBRACK RBRACK 
   LBRACE RBRACE DOT 
-  PLUS MINUS TIMES DIVIDE EQ NEQ LT LE GT GE
+  PLUS MINUS UMINUS TIMES DIVIDE EQ NEQ LT LE GT GE
   AND OR ASSIGN
   ARRAY IF THEN ELSE WHILE FOR TO DO LET IN END OF 
   BREAK NIL
@@ -34,10 +49,141 @@ void yyerror(char *s)
 
 %%
 
-program:	exp
+empty:
 
-exp:   ID
+/* Declarations */
+
+decs: empty
+  | dec decs
+
+dec: tydec
+  | vardec
+  | fundec
+
+/* Data type declaration */
+
+tydec: TYPE ID EQ ty
+
+ty: ID
+  | LBRACE tyfields RBRACE
+  | ARRAY OF ID
+
+tyfields: empty
+  | tyfield COMMA tyfields
+
+tyfield: ID COLON ID
+
+
+/* Variable declaration */
+
+vardec: VAR ID ASSIGN exp
+  | VAR ID COLON ID ASSIGN exp
+
+/* Function declaration */
+
+fundec: FUNCTION ID LPAREN tyfields RPAREN EQ exp
+  | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp
+
+
+/* lvalue */
+
+lvalue: ID
+  | lvalue DOT ID
+  | lvalue LBRACK exp RBRACK
+
+/* Expression Sequencing */
+expseq: exp
+  | expseq SEMICOLON exp
+
+/* Let Expression */
+
+let_exp: LET decs IN expseq END
+  | LET decs IN END
+
+/* Conditional Expressions */
+
+cond_exp: IF exp THEN exp
+  | IF exp THEN exp ELSE exp
+
+/* Loop Expressions */
+loop_exp: WHILE exp DO exp
+  | FOR exp TO exp DO exp
+  | BREAK
+
+/* Misc Expressions */
+misc_exp: NIL
+  | LPAREN expseq RPAREN
+  | LPAREN RPAREN
+  | INT
+  | STRING
+  | MINUS exp %prec UMINUS
+
+/* Function Call expression */
+
+func_call_exp: ID LPAREN RPAREN
+  | ID LPAREN expseq RPAREN
+
+/* Arithmetic expressions */
+
+arith_exp: exp PLUS exp
+  | exp MINUS exp
+  | exp TIMES exp
+  | exp DIVIDE exp
+
+/* Comparison expressions */
+
+comp_exp: exp EQ exp
+  | exp LT exp
+  | exp LE exp
+  | exp NEQ exp
+  | exp GT exp
+  | exp GE exp
+
+/* Boolean expressions */
+  
+bool_exp: exp AND exp
+  | exp OR exp
+
+/* Record creation expressions */
+  
+record_exp: ID LBRACE record_fields RBRACE
+
+record_field: ID EQ exp
+
+record_fields: empty
+  | record_field
+  | record_fields COMMA record_field
+
+/* Array creation expression */
+
+array_exp: ID LBRACK exp RBRACK OF exp
+
+/* Assignment expression */
+
+assign_exp: lvalue ASSIGN exp
+
+/* Expressions */
+
+exp: lvalue
+  | let_exp
+  | cond_exp
+  | loop_exp
+  | misc_exp
+  | func_call_exp
+  | arith_exp
+  | comp_exp
+  | bool_exp
+  | record_exp
+  | array_exp
+  | assign_exp
+
+
+program: exp
 
 
 
-	
+
+
+
+
+
